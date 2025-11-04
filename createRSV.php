@@ -1,24 +1,7 @@
 <?php
-function clean($key, $type = 'string', $src = INPUT_POST)
-{
-    $filter = FILTER_SANITIZE_SPECIAL_CHARS;
-    $options = 0;
+include "helper.php";
 
-    if ($type === 'email') {
-        $filter = FILTER_SANITIZE_EMAIL;
-    } 
-    
-    $value = filter_input($src, $key, $filter, $options);
-
-    return trim($value ?? '');
-}
-
-function esc($val)
-{
-    return htmlspecialchars((string)$val, ENT_QUOTES, 'UTF-8');
-}
-
-$firstName = $lastName = $phone = $email = $address = $city = $zip = $quantity ="";
+$firstName = $lastName = $phone = $email = $address = $city = $zip = $quantity = $item = "";
 $startDate = $endDate = "";
 $errors = []; 
 $success = ""; 
@@ -33,8 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $address = clean('address');
     $city = clean('city'); 
     $zip = clean('zip');
-    $startDate = clean('startDate');
-    $endDate = clean('endDate');
+    $item = clean('item');
+    $today = date('Y-m-d');
+    $startDate = clean('startDate', 'date');
+    $endDate = clean('endDate', 'date');
     $quantity = clean('quantity'); 
 
     // Field Validation
@@ -78,21 +63,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($zip)) {
         $errors[] = "Zip code is required.";
     } 
+    if (empty($item)) {
+        $errors[] = "Item is required.";
+    } 
 
     if (empty($startDate)) {
-        $errors[] = "Start date is required";
-    } 
-    if (empty($endDate)) {
-        $errors[] = "End date is required";
+        $errors[] = "Start date is required.";
+    } elseif ($startDate < $today) {
+        $errors[] = "Start date cannot be in the past";
     }
+
+    if (empty($endDate)) {
+        $errors[] = "End date is required.";
+    } elseif ($endDate <= $startDate) {
+        $errors[] = "End date must be at least 1 day after start date.";
+    }
+    
     if(empty($quantity))
     {
         $errors[] =  "Quantity is required.";
     }
+    // will need to check if quantity is greater than the database stock 
+    // elseif($quantity > DBstock)
+    // {
+    //     $errors[] =  "$item only has ($stock) in stock.";
+    // }
 
     if (empty($errors))
     {
-        $success = "Contact Info Accepted. Name: " .esc($firstName).  " " .esc($lastName). " Phone: " .esc($phone). " Email: " .esc($email). "<br><br>RSV Info Accepted. Address: " .esc($address).  " City: " .esc($city). " Zip Code: " .esc($zip). " Dates: " .esc($startDate). " - " .esc($endDate);
+        $success = "Contact Info Accepted. Name: " .esc($firstName).  " " .esc($lastName). " Phone: " .esc($phone). " Email: " .esc($email). "<br><br>RSV Info Accepted. Address: " .esc($address).
+          " City: " .esc($city). " Zip Code: " .esc($zip). " Dates: " . esc($startDate). " - " . esc($endDate). " Item: " .esc($item);
         
         $firstName = $lastName = $phone = $email = $address = $city = $zip = "";
         $startDate = $endDate = "";
@@ -124,17 +124,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Last Name: <input type="text" name="lastName" value="<?php echo esc($lastName); ?>"><br><br>
             Phone Number: <input type="text" name="phone" value="<?php echo esc($phone); ?>"><br><br>
             Email: <input type="text" name="email" value="<?php echo esc($email); ?>"><br><br>
-            Street Address <input type = "text" name="address" value = "<?php echo esc($address); ?>"><br><br>
-            City <input type = "text" name="city" value = "<?php echo esc($city); ?>"><br><br>
-            Zipcode <input type = "text" name="zip" value = "<?php echo esc($zip); ?>"><br><br>
-            Start Date: <input name="startDate" type="date" value = "<?php echo esc($startDate); ?>"><br><br>
-            End Date: <input name="endDate" type="date" value = "<?php echo esc($endDate); ?>"><br><br>
-            Item: <select name="itemId"><br><br>
+            Street Address: <input type = "text" name="address" value = "<?php echo esc($address); ?>"><br><br>
+            City: <input type = "text" name="city" value = "<?php echo esc($city); ?>"><br><br>
+            Zipcode: <input type = "text" name="zip" value = "<?php echo esc($zip); ?>"><br><br>
+            Start Date: <input type="date" name="startDate" value="<?= esc($startDate) ?>"><br><br>
+            End Date: <input type="date" name="endDate" value="<?= esc($endDate) ?>"><br><br>
+
+            Item: <select name="item"><br><br>
                 <option value="">Select...</option>
-                <option>Royal Bounce Castle</option>
-                <option>Majestic Water Slide</option>
-                <option>Crown Obstacle Course</option>
-          </select><br><br>
+                <option value="Royal Bounce Castle" <?php if ($item === 'Royal Bounce Castle') echo 'selected'; ?>>Royal Bounce Castle</option>
+                <option value="Majestic Water Slide" <?php if ($item === 'Majestic Water Slide') echo 'selected'; ?>>Majestic Water Slide</option>
+                <option value="Crown Obstacle Course" <?php if ($item === 'Crown Obstacle Course') echo 'selected'; ?>>Crown Obstacle Course</option>
+            </select><br><br>
           Quantity: <input name = "quantity" value = "<?php echo esc($quantity); ?>"><br><br>
         </div>
         <div class="admin-actions">
